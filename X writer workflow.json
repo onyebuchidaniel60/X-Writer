@@ -1,0 +1,1436 @@
+{
+  "name": "X writer workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "=https://api.x.com/2/tweets/{{ $json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twitterOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "tweet.fields",
+              "value": "public_metrics"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer AAAAAAAAAAAAAAAAAAAAAPJS5gEAAAAA88YHs5oNqPlNpC5hXEdcmTeXdnE%3DonFv69wlkrHGxvDLQL9rFcI1Ww5ujNbXjoNb3581wNuD2X3VH3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        624,
+        656
+      ],
+      "id": "1b19dd5d-f1bc-4f37-80e0-96cbbb8a1db6",
+      "name": "Fetch X metrics/X analytics",
+      "credentials": {
+        "twitterOAuth2Api": {
+          "id": "YziTEBy6j76qluHh",
+          "name": "X account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1a4d18f-3a2c-4cc4-8757-1fe6ced6641a",
+              "name": "Tweet",
+              "value": "={{ $json.data.text }}",
+              "type": "string"
+            },
+            {
+              "id": "608f1765-3612-4865-8635-115c64049124",
+              "name": "tweet id",
+              "value": "={{ $json.data.id }}",
+              "type": "string"
+            },
+            {
+              "id": "3a0af1ef-85d0-43c8-9d9f-e8780ec5af43",
+              "name": "number of retweets",
+              "value": "={{ $json.data.public_metrics.retweet_count }}",
+              "type": "string"
+            },
+            {
+              "id": "16a7ad28-80f4-44a0-b8ea-fea0135752f2",
+              "name": "number of replies",
+              "value": "={{ $json.data.public_metrics.reply_count }}",
+              "type": "string"
+            },
+            {
+              "id": "408ac41e-6cc5-4bec-917c-73ece6ebc63f",
+              "name": "Number of likes",
+              "value": "={{ $json.data.public_metrics.like_count }}",
+              "type": "string"
+            },
+            {
+              "id": "45de66b9-afc6-44e3-bac9-26d5bc1a7211",
+              "name": "number of quotes",
+              "value": "={{ $json.data.public_metrics.quote_count }}",
+              "type": "string"
+            },
+            {
+              "id": "8eef8fd6-e3b5-4d03-af45-760f6ed47fa7",
+              "name": "number of bookmarks",
+              "value": "={{ $json.data.public_metrics.bookmark_count }}",
+              "type": "string"
+            },
+            {
+              "id": "7c70373e-5ae2-415c-b517-5c03f1fd85e0",
+              "name": "number of impressions",
+              "value": "={{ $json.data.public_metrics.impression_count }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1040,
+        656
+      ],
+      "id": "d08008da-49c7-4105-938c-28d863dea934",
+      "name": "set metrics data"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        -64
+      ],
+      "id": "9fef6a63-d244-4750-b621-786a33248465",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the following raw content gathered from various websites and assign a trend score (1-10) to each significant topic found.\n\n**RAW INPUT CONTENT:**\n{{ $json.textdata }}\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are the **Trending Topic Analysis Agent**, a specialized entity responsible for aggregating, analyzing, and scoring current topic trends based on raw, multi-source textual data.\n\n**OBJECTIVE:**\n1.  Identify all distinct topics mentioned in the provided raw text content.\n2.  Determine the frequency and context of discussion for each topic.\n3.  Assign a **Trend Score** (1-10) based on prevalence and prominence. \n\n**SCORING CRITERIA (1-10 Scale):**\n* **10 (Most Trending):** The topic appears most frequently across the collected data and is discussed with significant emphasis (e.g., dedicated articles, strong positive or negative sentiment).\n* **5-9 (Mid-Tier Trending):** The topic appears regularly, is mentioned in multiple sources, and forms a major part of the discussion, but is not the absolute dominant subject.\n* **1 (Least Trending):** The topic is mentioned only once or twice, is deeply nested within a larger discussion, or is only tangentially related to the main content.\n* **Constraint:** The topic with the highest derived score MUST receive a score of **10**. The topic with the lowest derived score MUST receive a score of **1**. All other scores must be relative to these two anchors. \n\n**OUTPUT REQUIREMENT:**\nYou have an output parser tool. Your final response MUST be a clean JSON array matching the provided schema in the output parser tool. Do not include any conversational text, explanations, or markdown outside of the JSON block. Like this: \n\n{\n  \"type\": \"ARRAY\",\n  \"items\": {\n    \"type\": \"OBJECT\",\n    \"properties\": {\n      \"topic\": {\n        \"type\": \"STRING\",\n        \"description\": \"A concise, capitalized title for the trending topic identified in the text.\"\n      },\n      \"frequency_count\": {\n        \"type\": \"INTEGER\",\n        \"description\": \"The raw count of how many times the topic was directly mentioned or was the central theme.\"\n      },\n      \"trend_score\": {\n        \"type\": \"INTEGER\",\n        \"minimum\": 1,\n        \"maximum\": 10,\n        \"description\": \"The assigned trend score from 1 (least trending) to 10 (most trending), based on frequency and depth of discussion.\"\n      },\n      \"summary\": {\n        \"type\": \"STRING\",\n        \"description\": \"A brief (1-2 sentence) summary of why this topic is currently relevant or what the text said about it.\"\n      }\n    }\n  }\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        2464,
+        -64
+      ],
+      "id": "605c7b71-ab42-4c35-85de-ab59bdc1171c",
+      "name": "score topics by trend and get most trending"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=*FIND TRENDING TOPIC FOR RESEARCH & POST:**\n{{ $json.topics }}\n\n**STRICT MAXIMUM WORD COUNT:**\n{{ $json.wordLimit }} words. \n(Note: You MUST adhere to the X platform's character limit and prioritize the word limit provided.)\n\n",
+        "options": {
+          "systemMessage": "You are the **Content Strategist Agent**, a specialized entity for rapidly researching trending topics and generating concise, high-impact content for social media platform X (formerly Twitter). You'll be given input data that contains trending topics with scores 1-10. the highest trending topic being the topic with score 10. Extract this highest trending topic and do this:\n\n**OBJECTIVE:**\n1.  **Mandatory Research:** Use the Google Search tool to gather the latest, most relevant information and statistics regarding the highest trending topic.\n2, **Prompt bank** Use the google sheet tool to get latest prompt and add it to this prompt. the prompt helps tweak your post to get better reach on X, use it in addition to this prompt. If there is no latest prompt, ignore it.\n3.  **Synthesis:** Synthesize the most interesting and current research findings into a single, compelling X post.\n4.  **Format Adherence:** The post MUST be highly engaging, use appropriate hashtags, and strictly adhere to the provided word/character limit.\n\n**OUTPUT REQUIREMENT:**\nYour final response MUST contain ONLY the ready-to-post X content. Do not include any introductory phrases (e.g., \"Here is your post:\"), explanations, or markdown blocks. The content must be a single string.\n\n**Style Guide for X Post:**\n* Tone: Informative, authoritative, and slightly exciting.\n* Structure: Lead with the most important finding or a provocative question.\n* Keywords: Integrate the trending topic name naturally.\n "
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        2848,
+        320
+      ],
+      "id": "ad40cb91-a466-4765-8976-b324f04335de",
+      "name": "research artice and write x thread"
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1888,
+        -96
+      ],
+      "id": "b93b1d08-b88e-4986-8fc2-aa370bc9b77c",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "url": "https://www.coindesk.com/arc/outboundfeeds/rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        -288
+      ],
+      "id": "772f40d7-934c-46d6-a314-cf886ff5480b",
+      "name": "coindesk"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2768,
+        544
+      ],
+      "id": "bcba7d89-6960-4ff3-a736-4750742cd5cc",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "LAEkktW2n0uh09hf",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        112
+      ],
+      "id": "0bb41cb3-a4ed-4552-9cd2-35123486d678",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6EALfqIaaRVTnlrE",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://rss.app/feeds/r4s1Vnu9uCUNnNnh.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        384,
+        -112
+      ],
+      "id": "b0a7e885-9e38-474e-b1ad-a639f0b89050",
+      "name": "X"
+    },
+    {
+      "parameters": {
+        "url": "https://coingape.com/feed/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        352,
+        32
+      ],
+      "id": "649d1ba1-8914-430a-87a6-9107c95c5f3c",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        720,
+        32
+      ],
+      "id": "5032d6b0-5f35-45fe-9957-6029e3498caf",
+      "name": "XML"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2096,
+        -64
+      ],
+      "id": "99f1da47-4f93-422a-b779-000ab2e036e4",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "title",
+        "include": "selectedOtherFields",
+        "fieldsToInclude": "content",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        816,
+        -288
+      ],
+      "id": "a8ea589a-ee86-4251-bca0-311e17296071",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "creator, content",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -112
+      ],
+      "id": "0d5e9e2f-d36f-4499-b5a2-3e7380ca938a",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "rss.channel.item",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        880,
+        32
+      ],
+      "id": "e6dd9eed-be80-40b5-b154-a1548850c79c",
+      "name": "Split Out2"
+    },
+    {
+      "parameters": {
+        "url": "https://rss.app/feeds/E99FwvC3cVvQVzE1.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        224
+      ],
+      "id": "5c272e21-4a58-4421-81cf-8afb67a91390",
+      "name": "reddit"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "creator, title, content",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        816,
+        224
+      ],
+      "id": "9df6c7b2-d191-43c6-898b-53c0d7675083",
+      "name": "Split Out3"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "title, description",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        32
+      ],
+      "id": "5dff0d1f-3729-42d1-a7c4-e89b41d8c12e",
+      "name": "Split Out4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9cef2b04-0ad5-4cc4-ae21-f91db7859b9f",
+              "name": "textdata",
+              "value": "={{ $json.toJsonString() }}\n",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2272,
+        -64
+      ],
+      "id": "d76882b7-9afb-4595-97f1-9b4af3740481",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ffc896cd-bdad-4ec5-8219-996e3b992da0",
+              "name": "wordLimit",
+              "value": 200,
+              "type": "number"
+            },
+            {
+              "id": "394e0da8-c6c0-4f51-bb39-9f8e1450aa46",
+              "name": "topics",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2848,
+        -64
+      ],
+      "id": "19761886-4502-4d5d-9d01-914f145b69b7",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [
+        256,
+        656
+      ],
+      "id": "cffaa4c6-25b7-408f-b029-04f9a099b356",
+      "name": "Create Tweet",
+      "credentials": {
+        "twitterOAuth2Api": {
+          "id": "YziTEBy6j76qluHh",
+          "name": "X account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"ARRAY\",\n  \"items\": {\n    \"type\": \"OBJECT\",\n    \"properties\": {\n      \"topic\": {\n        \"type\": \"STRING\",\n        \"description\": \"A concise, capitalized title for the trending topic identified in the text.\"\n      },\n      \"frequency_count\": {\n        \"type\": \"INTEGER\",\n        \"description\": \"The raw count of how many times the topic was directly mentioned or was the central theme.\"\n      },\n      \"trend_score\": {\n        \"type\": \"INTEGER\",\n        \"minimum\": 1,\n        \"maximum\": 10,\n        \"description\": \"The assigned trend score from 1 (least trending) to 10 (most trending), based on frequency and depth of discussion.\"\n      },\n      \"summary\": {\n        \"type\": \"STRING\",\n        \"description\": \"A brief (1-2 sentence) summary of why this topic is currently relevant or what the text said about it.\"\n      }\n    }\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2640,
+        112
+      ],
+      "id": "e0cafe3b-bbe8-404a-9e2e-16dd8733836e",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "serpApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `fill in what should be searched for`, 'string') }}"
+            },
+            {
+              "name": "engine",
+              "value": "google"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        3200,
+        464
+      ],
+      "id": "a794e284-fd9d-4f9c-985f-e844c58d60e7",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lSoxWasgdLolhYyo",
+          "name": "Header Auth account"
+        },
+        "serpApi": {
+          "id": "UJljA8jUnwjjjjBi",
+          "name": "SerpAPI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": " ## get latest posts from reliable sources and structure data\n ### check readme https://github.com/onyebuchidaniel60/X-Writer/blob/gh-pages/README.md",
+        "height": 768,
+        "width": 1952
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        -368
+      ],
+      "id": "652aa34b-4db5-42db-b5d2-60adff2ae224",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## get  trending topic and write tweet\n",
+        "height": 1088,
+        "width": 1680,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1696,
+        -368
+      ],
+      "id": "4d9c669f-6bde-4aef-9f78-52165497f777",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=here is the data\n Tweet {{ $json.Tweet }}\nnumber of tweets{{ $json['number of retweets'] }}\n{{ $json['number of replies'] }}\n{{ $json['Number of likes'] }}\n{{ $json['number of quotes'] }}\n{{ $json['number of bookmarks'] }}\n{{ $json['number of impressions'] }}",
+        "options": {
+          "systemMessage": "You are an analysis agent. Your job is to read the performance metrics of a single tweet and use them to create an improved prompt for a tweet-generation agent. The improved prompt must focus **exclusively** on writing-related factors that maximize reach on X (formerly Twitter). Do NOT include advice about images, videos, media, threads, hashtags strategy beyond minimal use, paid promotions, frequency of posting, timing, audience analysis, or profile optimization. Only focus on **how the text itself should be written**.\n\n### Available Tool:\n\nYou have access to a http node too to call SerpAPI.\nUse it to search Google for the latest best practices for maximizing reach on X using text-only tweets, such as:\n\n* High-performing hook formats\n\n* Line structure strategies\n\n* Keyword usage (“Twitter SEO”)\n\n* Engagement-driving writing techniques\n\n* Rules around hashtags (0–2 max)\n\n* Patterns from high-performing text tweets\nSearch only for *writing-focused guidelines*, not media or promotional tactics.\n\nYou must use the tool when needed to refine or validate writing improvements.\n\n### Your Input:\n\nYou will be provided with raw X metrics for a tweet. Examples include:\n\n* Impressions\n* Likes\n* Replies\n* Bookmarks\n* Retweets\n* quotes\n\nYou will also receive the original tweet text.\n\n### Your Task:\n\n1. **Analyze the tweet’s performance** using the metrics provided. Assess which writing elements helped or hurt performance. Consider:\n\n   * Strength of hook\n   * Clarity and conciseness\n   * Keyword relevance / “Twitter SEO”\n   * Engagement triggers (questions, conversational tone)\n   * Value density\n   * Line structure & readability\n   * Overuse or underuse of hashtags\n   * Strength of CTA (if any)\n\n2. **Use http node tool to use SerpAPI** to search for credible, up-to-date writing best practices for maximizing reach with text-only tweets.\n\n3. **Identify weaknesses and opportunities** purely in the writing.\n\n4. **Generate a fully-optimized prompt** for the tweet-generation agent.\n\n   * This prompt must instruct the agent *how to write the tweet text itself* so it has the highest possible chance of reaching more people, based on:\n\n     * Best practices observed in high-performing tweets\n     * Algorithm-aligned writing behaviors\n     * Short, strong hooks\n     * High readability\n     * Natural keyword integration\n     * Encouraging meaningful engagement\n     * Minimal, relevant hashtags (0–2 max)\n     * Avoiding links in the main tweet\n     * Avoiding engagement bait\n\n4. The output you produce must be **a single improved prompt**, written clearly and ready to be used directly by a tweet-generation agent.\n\n### Output Format:\n\nReturn ONLY the improved prompt as plain text. No explanations, no analysis, no extra commentary.\n\nYour response should begin with:\n**“Improved Prompt:”**\nand then provide the new optimized prompt.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1776,
+        672
+      ],
+      "id": "5c377a00-4652-429e-9b8e-dc5d63d324aa",
+      "name": "analyze performance and create new prompt"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1vAmpvpjo1sZwkTGYlaDTqoR0lsfj5o9g7XKqE6HMjNs",
+          "mode": "list",
+          "cachedResultName": "X tweet metrics Tad",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1vAmpvpjo1sZwkTGYlaDTqoR0lsfj5o9g7XKqE6HMjNs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1vAmpvpjo1sZwkTGYlaDTqoR0lsfj5o9g7XKqE6HMjNs/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Tweet"
+          ],
+          "schema": [
+            {
+              "id": "Tweet",
+              "displayName": "Tweet",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tweet id",
+              "displayName": "tweet id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "number of retweets",
+              "displayName": "number of retweets",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "number of replies",
+              "displayName": "number of replies",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Number of likes",
+              "displayName": "Number of likes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "number of quotes",
+              "displayName": "number of quotes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "number of bookmarks",
+              "displayName": "number of bookmarks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "number of impressions",
+              "displayName": "number of impressions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1248,
+        656
+      ],
+      "id": "6b83c292-1e61-4043-b97a-e4207b5e6d66",
+      "name": "Write metrics to sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "l9Qp2zYDgKXuTy6Q",
+          "name": "Google Sheets account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        880
+      ],
+      "id": "b6d6a9da-80fc-480e-8a7f-68dbd7f59e90",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6EALfqIaaRVTnlrE",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "serpApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `fill in what should be searched for`, 'string') }}"
+            },
+            {
+              "name": "engine",
+              "value": "google"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        2208,
+        832
+      ],
+      "id": "ddc40d58-d87f-4e25-882f-acea3d25747c",
+      "name": "HTTP Request2",
+      "credentials": {
+        "serpApi": {
+          "id": "UJljA8jUnwjjjjBi",
+          "name": "SerpAPI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1jOTwlXWlTfKJmWSpmP1b9Ys0oT4JeE6S-t7_1ZQABIQ",
+          "mode": "list",
+          "cachedResultName": "prompt bank",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1jOTwlXWlTfKJmWSpmP1b9Ys0oT4JeE6S-t7_1ZQABIQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1jOTwlXWlTfKJmWSpmP1b9Ys0oT4JeE6S-t7_1ZQABIQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "prompt": "={{ $json.output }}"
+          },
+          "matchingColumns": [
+            "prompt"
+          ],
+          "schema": [
+            {
+              "id": "prompt",
+              "displayName": "prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1840,
+        976
+      ],
+      "id": "f554c156-b567-43c9-8425-82fcec8a7bcc",
+      "name": "Update prompt bank",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "l9Qp2zYDgKXuTy6Q",
+          "name": "Google Sheets account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        832,
+        656
+      ],
+      "id": "ac95b579-e6ab-4686-bad7-dd01aa3138d5",
+      "name": "Wait",
+      "webhookId": "ff50c014-7337-4831-b349-40360d84ff8f"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0e035dbf-38f8-4a78-8d73-84dc1ec2573a",
+              "leftValue": "={{ $json['number of retweets'] }}",
+              "rightValue": 10,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "2188b838-f72d-4527-ac5f-12a2b5841245",
+              "leftValue": "={{ $json['number of replies'] }}",
+              "rightValue": 15,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "ff139f78-c98e-47b3-8e5f-610add0f84ba",
+              "leftValue": "={{ $json['number of impressions'] }}",
+              "rightValue": 300,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1456,
+        656
+      ],
+      "id": "2d6fe902-15d3-417d-8c33-bde920c2dff5",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "content": "## Send tweet and analsye tweet and also update  prompt for research & write agent",
+        "height": 752,
+        "width": 2320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        64,
+        400
+      ],
+      "id": "8df11991-7500-4cd4-bcab-c00e0149ffbc",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "amount": 7
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        608,
+        -288
+      ],
+      "id": "2ffa68db-4ff1-437a-bd96-d32e1174ae31",
+      "name": "Wait1",
+      "webhookId": "722834a9-55e1-45f7-8d6e-ba04d7263f1d"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        592,
+        -112
+      ],
+      "id": "04610a8f-4e17-4b8d-a26a-b70e514d9222",
+      "name": "Wait2",
+      "webhookId": "e3a412b4-8883-4b88-9c6b-2d5b2d330842"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        224
+      ],
+      "id": "eef50ec1-d949-426d-baa0-91f53c4e2983",
+      "name": "Wait3",
+      "webhookId": "bbc48950-f572-4c37-b23e-28641187924a"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        544,
+        32
+      ],
+      "id": "a3037cf0-a74c-4262-ad6b-cf114d4775d6",
+      "name": "Wait4",
+      "webhookId": "9c5f3b07-b6ef-4edd-be36-7493c5ad2b17"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get the last row containing prompt in sheet in Google Sheets ",
+        "documentId": {
+          "__rl": true,
+          "value": "1jOTwlXWlTfKJmWSpmP1b9Ys0oT4JeE6S-t7_1ZQABIQ",
+          "mode": "list",
+          "cachedResultName": "prompt bank",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1jOTwlXWlTfKJmWSpmP1b9Ys0oT4JeE6S-t7_1ZQABIQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1jOTwlXWlTfKJmWSpmP1b9Ys0oT4JeE6S-t7_1ZQABIQ/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        3008,
+        544
+      ],
+      "id": "f16775ed-780f-4dcd-b470-bba5a3af92dd",
+      "name": "Read updated prompt bank",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "l9Qp2zYDgKXuTy6Q",
+          "name": "Google Sheets account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "id": "fd0cec9b-4e10-4cfa-97d3-6f4f3979d4f4",
+      "name": "Wait 3 Hours",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        432,
+        656
+      ],
+      "webhookId": "4e427973-78c2-4a1c-a8cd-f00f8ee8c7e9",
+      "notes": "Pauses the workflow for 2 hours to allow engagement to accumulate before fetching metrics."
+    }
+  ],
+  "pinData": {
+    "HTTP Request": [
+      {
+        "json": {
+          "data": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss version=\"2.0\"\n\txmlns:content=\"http://purl.org/rss/1.0/modules/content/\"\n\txmlns:wfw=\"http://wellformedweb.org/CommentAPI/\"\n\txmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n\txmlns:atom=\"http://www.w3.org/2005/Atom\"\n\txmlns:sy=\"http://purl.org/rss/1.0/modules/syndication/\"\n\txmlns:slash=\"http://purl.org/rss/1.0/modules/slash/\"\n\t>\n\n<channel>\n\t<title>CoinGape</title>\n\t<atom:link href=\"https://coingape.com/feed/\" rel=\"self\" type=\"application/rss+xml\" />\n\t<link>https://coingape.com/</link>\n\t<description>CoinGape - 24*7 Crypto Updates</description>\n\t<lastBuildDate>Thu, 20 Nov 2025 21:52:53 +0000</lastBuildDate>\n\t<language>en-US</language>\n\t<sy:updatePeriod>\n\thourly\t</sy:updatePeriod>\n\t<sy:updateFrequency>\n\t1\t</sy:updateFrequency>\n\t<generator>https://wordpress.org/?v=6.8.3</generator>\n\n<image>\n\t<url>https://coingape.com/wp-content/uploads/2023/11/cropped-CoinGape_logo2-32x32.png</url>\n\t<title>CoinGape</title>\n\t<link>https://coingape.com/</link>\n\t<width>32</width>\n\t<height>32</height>\n</image> \n\t<item>\n\t\t<title>Senate Committee Advances Pro-Crypto Michael Selig’s Nomination For CFTC Chair</title>\n\t\t<link>https://coingape.com/senate-advances-pro-crypto-michael-seligs-nomination-for-cftc-chair/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Paul Adedoyin]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 20:34:29 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Crypto News]]></category>\n\t\t<category><![CDATA[Regulation News]]></category>\n\t\t<category><![CDATA[crypto news]]></category>\n\t\t<category><![CDATA[Crypto Regulations]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274833</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>A pro-crypto nominee Michael Selig has been pushed forward by the Senate Agriculture Committee to be the next Chair of the Commodity Futures Trading Commission (CFTC). The vote was close, 12‑11. CFTC Leadership Gap Sparks Urgent Senate Action According to the Congress reporter Brendan Pedersen, the decision was strictly supported by the GOP as no</p>\n<p>The post <a href=\"https://coingape.com/senate-advances-pro-crypto-michael-seligs-nomination-for-cftc-chair/\">Senate Committee Advances Pro-Crypto Michael Selig’s Nomination For CFTC Chair</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/cftc_plans_framework-2.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Why are XRP, BTC, ETH, and DOGE Prices Crashing?</title>\n\t\t<link>https://coingape.com/trending/why-are-xrp-btc-eth-and-doge-prices-crashing/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Coingapestaff]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 20:14:02 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Price Analysis]]></category>\n\t\t<category><![CDATA[Bitcoin (BTC) Price]]></category>\n\t\t<category><![CDATA[Dogecoin (DOGE)]]></category>\n\t\t<category><![CDATA[Ethereum]]></category>\n\t\t<category><![CDATA[XRP]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274831</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>XRP, BTC, ETH, and DOGE prices are experiencing significant declines, with the overall crypto market down 2.71% in the past 24 hours. Bitcoin has fallen below $90K, and Ethereum dropped under $3K, contributing to a broader market downturn. XRP Price Struggles as Price Dips Below $2 In the last 24 hours, the XRP price crashed</p>\n<p>The post <a href=\"https://coingape.com/trending/why-are-xrp-btc-eth-and-doge-prices-crashing/\">Why are XRP, BTC, ETH, and DOGE Prices Crashing?</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/why_xrp__btc__eth.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Ethereum Treasury FG Nexus Offloads 10,922 ETH Amid ETH Price Crash Below $3,000</title>\n\t\t<link>https://coingape.com/ethereum-treasury-fg-nexus-offloads-10922-eth-amid-crypto-crash/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Coingapestaff]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 18:42:18 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Crypto News]]></category>\n\t\t<category><![CDATA[Ethereum News]]></category>\n\t\t<category><![CDATA[Ether]]></category>\n\t\t<category><![CDATA[Ethereum]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274817</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>Ethereum Treasury FG Nexus shifted direction after previously signaling plans to expand its Ethereum position. The company sold part of its cryptocurrency reserves to fund a major buyback initiative. The move marked a clear departure from its earlier target of becoming a large corporate holder of Ethereum. Ethereum Sale Fuels FG Nexus Buyback Strategy According</p>\n<p>The post <a href=\"https://coingape.com/ethereum-treasury-fg-nexus-offloads-10922-eth-amid-crypto-crash/\">Ethereum Treasury FG Nexus Offloads 10,922 ETH Amid ETH Price Crash Below $3,000</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/ethereum_treasury_fg_nexus_offloads_720.jpg\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Dogecoin Price Forecast: Will DOGE Hold Above $0.15 or Fall Lower?</title>\n\t\t<link>https://coingape.com/markets/dogecoin-price-forecast-will-doge-hold-above-0-15-or-fall-lower/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Coingapestaff]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 18:38:13 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Price Analysis]]></category>\n\t\t<category><![CDATA[Dogecoin (DOGE)]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274822</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>Dogecoin price has recently struggled to maintain levels above $0.15, following a decline of 12% over the past week. The cryptocurrency was unable to hold the key $0.20 support level, contributing to its downward trend. Questions remain if the DOGE price will hover above $0.15 level or will crash further. This fall reflects the general</p>\n<p>The post <a href=\"https://coingape.com/markets/dogecoin-price-forecast-will-doge-hold-above-0-15-or-fall-lower/\">Dogecoin Price Forecast: Will DOGE Hold Above $0.15 or Fall Lower?</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/dogecoin_price_forecast__2_.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Pi Coin Price Eyes a 105% Surge as Bullish Patterns Align With Bullish Fundamentals</title>\n\t\t<link>https://coingape.com/markets/pi-coin-price-eyes-a-105-surge-as-bullish-patterns-align-with-bullish-fundamentals/</link>\n\t\t\n\t\t<dc:creator><![CDATA[crispus]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 17:12:23 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Price Analysis]]></category>\n\t\t<category><![CDATA[Pi Coin]]></category>\n\t\t<category><![CDATA[Pi Network]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274796</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>Pi Coin price rose by almost 4% today, Nov. 20, reaching its highest level since October 29 this year. It has jumped by 61.5% from its lowest level in October, and its technicals and fundamentals points to a 105% surge to the psychological level at $0.50. Pi Coin Price Technical Analysis Suggests More Gains  The</p>\n<p>The post <a href=\"https://coingape.com/markets/pi-coin-price-eyes-a-105-surge-as-bullish-patterns-align-with-bullish-fundamentals/\">Pi Coin Price Eyes a 105% Surge as Bullish Patterns Align With Bullish Fundamentals</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/Pi-Network-Price-Eyes-a-105.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Billionaire Ray Dalio Reveals Bitcoin Allocation, Says BTC Not Ready For Reserve Role</title>\n\t\t<link>https://coingape.com/ray-dalio-reveals-bitcoin-allocation-says-btc-not-fit-as-reserve-asset/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Coingapestaff]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 16:26:01 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Bitcoin News]]></category>\n\t\t<category><![CDATA[Crypto News]]></category>\n\t\t<category><![CDATA[Bitcoin]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274797</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>Billionaire Ray Dalio reaffirmed his cautious stance on Bitcoin while confirming that he still holds about 1% of his portfolio in the asset. He said the position has remained unchanged for many years and continues to represent a small, steady portion of his broader strategy.  Ray Dalio Reveals Bitcoin Accounts For 1% Of His Portfolio</p>\n<p>The post <a href=\"https://coingape.com/ray-dalio-reveals-bitcoin-allocation-says-btc-not-fit-as-reserve-asset/\">Billionaire Ray Dalio Reveals Bitcoin Allocation, Says BTC Not Ready For Reserve Role</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/fbillionaire_ray_dalio_reveals_720-1.jpg\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Will XRP Price Rally to $3 After Bitwise Launches First XRP ETF on NYSE?</title>\n\t\t<link>https://coingape.com/markets/will-xrp-price-rally-to-3-after-bitwise-launches-first-xrp-etf-on-nyse/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Coingapestaff]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 16:19:46 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Price Analysis]]></category>\n\t\t<category><![CDATA[XRP]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274809</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>XRP price remains above the $2.10 mark despite recent market downturns. The cryptocurrency has faced a slight decline over the past week, struggling to regain momentum. However, the launch of the Bitwise Spot XRP ETF to the New York Stock Exchange today has brought out some optimism.  The 33% increase in the 24-hour trading volume</p>\n<p>The post <a href=\"https://coingape.com/markets/will-xrp-price-rally-to-3-after-bitwise-launches-first-xrp-etf-on-nyse/\">Will XRP Price Rally to $3 After Bitwise Launches First XRP ETF on NYSE?</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/will_xrp_price_rally_to__3_after_bitwise_launches_first_xrp_etf_on_nyse.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Breaking: Rep. Warren Davidson Introduces ‘Bitcoin for America’ Act to Codify Strategic BTC Reserve Order</title>\n\t\t<link>https://coingape.com/rep-davidson-introduces-bitcoin-for-america-act-for-a-strategic-reserve/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Paul Adedoyin]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 16:06:00 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Bitcoin News]]></category>\n\t\t<category><![CDATA[Crypto News]]></category>\n\t\t<category><![CDATA[Bitcoin]]></category>\n\t\t<category><![CDATA[crypto news]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274805</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>A bill presented by Rep. Warren Davidson will enable the people of America to pay federal taxes using Bitcoin. The adoption of the bill named &#8216;Bitcoin for America Act&#8217; would make the mandatory deposit of every payment of Bitcoin tax into a national Strategic Bitcoin Reserve. It aims at enhancing the position of the United</p>\n<p>The post <a href=\"https://coingape.com/rep-davidson-introduces-bitcoin-for-america-act-for-a-strategic-reserve/\">Breaking: Rep. Warren Davidson Introduces ‘Bitcoin for America’ Act to Codify Strategic BTC Reserve Order</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/rep._warren_davidson_introduces.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>More Rate Cuts Could Keep Inflation Elevated, Fed’s Beth Hammack Warns</title>\n\t\t<link>https://coingape.com/more-rate-cuts-could-keep-inflation-elevated-feds-beth-hammack-warns/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Boluwatife Adeyemi]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 15:05:15 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Crypto News]]></category>\n\t\t<category><![CDATA[crypto news]]></category>\n\t\t<category><![CDATA[Federal Reserve]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274785</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>Cleveland Fed President Beth Hammack has commented on the effects that further rate cuts could have on inflation. This comes amid uncertainty about whether the FOMC will make another Fed rate cut at the December meeting. Another rate cut is significant as it could provide a much-needed lift for Bitcoin and the broader crypto market.</p>\n<p>The post <a href=\"https://coingape.com/more-rate-cuts-could-keep-inflation-elevated-feds-beth-hammack-warns/\">More Rate Cuts Could Keep Inflation Elevated, Fed’s Beth Hammack Warns</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/More-Rate-Cuts-Could.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Breaking: U.S. Jobs Report Comes In Above Expectations, Bitcoin Rises</title>\n\t\t<link>https://coingape.com/u-s-jobs-report-comes-in-above-expectations-bitcoin-reacts/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Boluwatife Adeyemi]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 13:57:56 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Bitcoin News]]></category>\n\t\t<category><![CDATA[Crypto News]]></category>\n\t\t<category><![CDATA[Bitcoin]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274759</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>The September U.S. jobs report beat estimates, with both the nonfarm payrolls and the unemployment rate coming in higher than expected. Bitcoin rose on the back of the report release, as the rise in the unemployment rate strengthens the case for a rate cut, which is a positive for risk assets. U.S. Job Report Beat</p>\n<p>The post <a href=\"https://coingape.com/u-s-jobs-report-comes-in-above-expectations-bitcoin-reacts/\">Breaking: U.S. Jobs Report Comes In Above Expectations, Bitcoin Rises</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/‘U.S.-Jobs-Report-Comes-In-x-2.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Ethereum Price Hits Historical Liquidity Reset — Is a Bounce Coming?</title>\n\t\t<link>https://coingape.com/markets/ethereum-price-hits-historical-liquidity-reset-is-a-bounce-coming/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Coingapestaff]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 13:34:43 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Price Analysis]]></category>\n\t\t<category><![CDATA[Ethereum]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274765</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>The Ethereum price now trades inside a zone that shaped important turning points in earlier cycles. Liquidity reset signals show the same sharp drop that preceded strong recoveries. ETH moves inside a tightening structure as both sides react near familiar levels. Market depth thins again and forces price to behave more aggressively during each swing.</p>\n<p>The post <a href=\"https://coingape.com/markets/ethereum-price-hits-historical-liquidity-reset-is-a-bounce-coming/\">Ethereum Price Hits Historical Liquidity Reset — Is a Bounce Coming?</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/Ethereum-Price-Hits-Historical-Liquidity-Reset-—-Is-a-Bounce-Coming.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Breaking: Metaplanet To Raise $150M to Buy More Bitcoin Despite Crypto Crash</title>\n\t\t<link>https://coingape.com/metaplanet-to-raise-150m-to-buy-more-bitcoin-despite-crypto-crash/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Paul Adedoyin]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 13:27:40 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Bitcoin News]]></category>\n\t\t<category><![CDATA[Crypto News]]></category>\n\t\t<category><![CDATA[Bitcoin]]></category>\n\t\t<category><![CDATA[crypto news]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274766</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>Metaplanet is seeking funds of up to $150 million dollars to purchase more Bitcoin even as the crypto market remains highly volatile. The funds will also be used for other operational needs of the company. Capital Raise Positions Metaplanet to Buy Bitcoin at Market Lows A formal notice revealed that the company has passed a</p>\n<p>The post <a href=\"https://coingape.com/metaplanet-to-raise-150m-to-buy-more-bitcoin-despite-crypto-crash/\">Breaking: Metaplanet To Raise $150M to Buy More Bitcoin Despite Crypto Crash</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/metaplanet_to_raise__150m.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Grayscale Solana Trust ETF (GSOL) Launch Was Years of Research and Dialogue With Investors </title>\n\t\t<link>https://coingape.com/block-of-fame/opinion/grayscale-solana-trust-etf-gsol-launch-was-years-of-research-and-dialogue-with-investors/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Rayhaneh Sharif-Askary]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 12:44:18 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Opinion]]></category>\n\t\t<category><![CDATA[Power talk]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274726</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>Grayscale Solana Trust ETF:- At Grayscale, our job is to help investors gain exposure to the emerging crypto ecosystem  &#8211; and sometimes, that means building bridges before the market even knows it needs them.  When we first launched our Solana product in 2021, the crypto conversation mainly revolved around NFTs &#8211; trading at a frenzied</p>\n<p>The post <a href=\"https://coingape.com/block-of-fame/opinion/grayscale-solana-trust-etf-gsol-launch-was-years-of-research-and-dialogue-with-investors/\">Grayscale Solana Trust ETF (GSOL) Launch Was Years of Research and Dialogue With Investors </a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/Rayhaneh-Sharif-Askary-3-1.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Solana Price Prediction: Key Indicators That Could Propel SOL Toward $200</title>\n\t\t<link>https://coingape.com/markets/solana-price-prediction-key-indicators-that-could-propel-sol-toward-200/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Coingapestaff]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 11:59:22 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Price Analysis]]></category>\n\t\t<category><![CDATA[Solana]]></category>\n\t\t<category><![CDATA[Solana ETF]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274752</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>Solana price has seen a 2% increase, reaching $142.27 in the last 24 hours, following a brief recovery. The price remains above the $140 level, showing signs of renewed strength. This wave comes as Solana rebounds sharply off a major support zone, and investors are optimistic that a bigger trend reversal will take place. The</p>\n<p>The post <a href=\"https://coingape.com/markets/solana-price-prediction-key-indicators-that-could-propel-sol-toward-200/\">Solana Price Prediction: Key Indicators That Could Propel SOL Toward $200</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/solana_price_outlook_key_indicators_that_could_propel_sol_toward__200.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Zcash Price Outlook: What&#8217;s Next for ZEC After Surging 12%?</title>\n\t\t<link>https://coingape.com/markets/zcash-price-outlook-whats-next-for-zec-after-surging-12/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Coingapestaff]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 11:13:12 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Price Analysis]]></category>\n\t\t<category><![CDATA[zcash]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274739</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>Zcash price jumped 12% today after strong institutional accumulation met a tightening supply landscape. Cypherpunk Technologies acquired $18M worth of ZEC, and that purchase immediately sparked heavier demand across major venues. Meanwhile, nearly 30% of the entire supply now sits in shielded pools, and that shift reduces short-term liquidity.  Additionally, ZEC price found quick support</p>\n<p>The post <a href=\"https://coingape.com/markets/zcash-price-outlook-whats-next-for-zec-after-surging-12/\">Zcash Price Outlook: What&#8217;s Next for ZEC After Surging 12%?</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/Zcash-Price-Outlook.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Trump’s World Liberty Begins Token Reallocation After $22.1M Security Breach Burn</title>\n\t\t<link>https://coingape.com/trumps-world-liberty-begins-token-reallocation-after-22-1m-security-breach-burn/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Michael Adeleke]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 10:39:46 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Altcoin News]]></category>\n\t\t<category><![CDATA[Crypto News]]></category>\n\t\t<category><![CDATA[crypto news]]></category>\n\t\t<category><![CDATA[World Liberty Financial]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274736</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>World Liberty has started moving user funds after a major token burn. This comes after the security breach that exposed vulnerabilities on its systems. Also, the platform is facing claims of illegal token sales to North Korea and Russia. World Liberty Responds After Security Breach In a recent X thread, WLFI confirmed that a group</p>\n<p>The post <a href=\"https://coingape.com/trumps-world-liberty-begins-token-reallocation-after-22-1m-security-breach-burn/\">Trump’s World Liberty Begins Token Reallocation After $22.1M Security Breach Burn</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/Trumps-World-Liberty-Begins-Token-Reallocation-After-22.1M-Security-Breach-Burn.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Crypto Market Braces as Wall Street Sees Rise in Nonfarm Payrolls</title>\n\t\t<link>https://coingape.com/crypto-market-braces-as-wall-street-sees-rise-in-nonfarm-payrolls/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Varinder Singh]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 10:02:50 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Altcoin News]]></category>\n\t\t<category><![CDATA[Bitcoin News]]></category>\n\t\t<category><![CDATA[Crypto News]]></category>\n\t\t<category><![CDATA[Bitcoin]]></category>\n\t\t<category><![CDATA[Crypto Market]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274709</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>Wall Street estimates Nonfarm payrolls in the United States to come in at 50K in September, up from 22K in August. Moreover, the US unemployment rate is projected to hold steady at 4.3%. Crypto market participants brace for volatility amid job growth and a significant drop in Fed rate cut odds in December. Wall Street</p>\n<p>The post <a href=\"https://coingape.com/crypto-market-braces-as-wall-street-sees-rise-in-nonfarm-payrolls/\">Crypto Market Braces as Wall Street Sees Rise in Nonfarm Payrolls</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/Crypto-Market-Braces-as-2.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Pi Network Price Soars 10%: What’s Driving Sudden Rally?</title>\n\t\t<link>https://coingape.com/markets/pi-network-price-soars-10-whats-driving-sudden-rally/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Coingapestaff]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 09:47:00 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Price Analysis]]></category>\n\t\t<category><![CDATA[Pi Coin]]></category>\n\t\t<category><![CDATA[Pi Network]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274723</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>Pi Network’s native token, PI, has experienced a notable 10% price surge in the past 24 hours. The Pi coin price has gained attention after a week of consolidation, with buyers returning to the market. The price is currently holding steady above $0.24, following a strong bullish trend.  The crypto market as a whole increased</p>\n<p>The post <a href=\"https://coingape.com/markets/pi-network-price-soars-10-whats-driving-sudden-rally/\">Pi Network Price Soars 10%: What’s Driving Sudden Rally?</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/pi_network_price_soars_10__what___s_driving_sudden_rally.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>Bitcoin Price Up Today: Is This the Start of a Bigger Rally?</title>\n\t\t<link>https://coingape.com/bitcoin-price-up-today-is-this-the-start-of-a-bigger-rally-2/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Michael Adeleke]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 08:45:27 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Bitcoin News]]></category>\n\t\t<category><![CDATA[Crypto News]]></category>\n\t\t<category><![CDATA[Bitcoin (BTC) Price]]></category>\n\t\t<category><![CDATA[crypto news]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274715</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>The Bitcoin price today has recorded some gains after days of a downtrend. Experts are now weighing whether this could mean the token is set to recover its previous highs. Bitcoin Price Stabilizes as Market Sentiment Improves According to data from CoinMarketCap, Bitcoin was up nearly 2% over the past 24 hours. This partly reversed</p>\n<p>The post <a href=\"https://coingape.com/bitcoin-price-up-today-is-this-the-start-of-a-bigger-rally-2/\">Bitcoin Price Up Today: Is This the Start of a Bigger Rally?</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/Bitcoin-Price-Up-Today-Is-This-the-Start-of-a-Bigger-Rally.webp\" width=\"460\" height=\"230\" />\t</item>\n\t\t<item>\n\t\t<title>After AWS Outage, Consensys and Eigen Launch Decentralized Solution for Web3</title>\n\t\t<link>https://coingape.com/block-of-fame/pulse/after-aws-outage-attack-consensys-and-eigen-launch-decentralized-solution-for-web3/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Sneha Agrawal]]></dc:creator>\n\t\t<pubDate>Thu, 20 Nov 2025 07:22:39 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Pulse]]></category>\n\t\t<guid isPermaLink=\"false\">coingape-274430</guid>\n\n\t\t\t\t\t<description><![CDATA[<p>Consensys:- Last month in October 2025, a major AWS disruption centered on the US-EAST-1 region caused widespread downtime across many internet services. AWS traced the problem to an internal DNS/automation bug that created unreachable records and required manual remediation. However, the outage that lasted many hours exposed the heavy reliance of web3 on centralized infrasturucte.</p>\n<p>The post <a href=\"https://coingape.com/block-of-fame/pulse/after-aws-outage-attack-consensys-and-eigen-launch-decentralized-solution-for-web3/\">After AWS Outage, Consensys and Eigen Launch Decentralized Solution for Web3</a> appeared first on <a href=\"https://coingape.com\">CoinGape</a>.</p>\n]]></description>\n\t\t\n\t\t\n\t\t\n\t\t<media:content medium=\"image\"  xmlns:media=\"http://search.yahoo.com/mrss/\" url=\"https://coingape.com/wp-content/uploads/2025/11/After-AWS-Outage-Attack-Consensys-and-Eigen-2-1.webp\" width=\"460\" height=\"230\" />\t</item>\n\t</channel>\n</rss>\n"
+        }
+      }
+    ],
+    "Create Tweet": [
+      {
+        "json": {
+          "id": "1992671841425514876",
+          "edit_history_tweet_ids": [
+            "1992671841425514876"
+          ],
+          "text": "Bitcoin's volatile journey continues! After hitting a staggering new all-time high above $123,000 earlier this year, BTC recently dipped to $80,700 before recovering to its current range around $84,608.00, with a market cap near $1.68 TRILLION. What's next for the crypto king?…"
+        }
+      }
+    ],
+    "Fetch X metrics/X analytics": [
+      {
+        "json": {
+          "data": {
+            "public_metrics": {
+              "retweet_count": 0,
+              "reply_count": 0,
+              "like_count": 0,
+              "quote_count": 0,
+              "bookmark_count": 0,
+              "impression_count": 27
+            },
+            "edit_history_tweet_ids": [
+              "1992671841425514876"
+            ],
+            "id": "1992671841425514876",
+            "text": "Bitcoin's volatile journey continues! After hitting a staggering new all-time high above $123,000 earlier this year, BTC recently dipped to $80,700 before recovering to its current range around $84,608.00, with a market cap near $1.68 TRILLION. What's next for the crypto king?"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Fetch X metrics/X analytics": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set metrics data": {
+      "main": [
+        [
+          {
+            "node": "Write metrics to sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "reddit",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "X",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "coindesk",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "score topics by trend and get most trending": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "research artice and write x thread": {
+      "main": [
+        [
+          {
+            "node": "Create Tweet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "coindesk": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "research artice and write x thread",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "score topics by trend and get most trending",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "X": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Wait4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML": {
+      "main": [
+        [
+          {
+            "node": "Split Out2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Split Out2": {
+      "main": [
+        [
+          {
+            "node": "Split Out4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "reddit": {
+      "main": [
+        [
+          {
+            "node": "Wait3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Split Out4": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "score topics by trend and get most trending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "research artice and write x thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Tweet": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "score topics by trend and get most trending",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "ai_tool": [
+        [
+          {
+            "node": "research artice and write x thread",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "analyze performance and create new prompt": {
+      "main": [
+        [
+          {
+            "node": "Update prompt bank",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write metrics to sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "analyze performance and create new prompt",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "ai_tool": [
+        [
+          {
+            "node": "analyze performance and create new prompt",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "set metrics data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [],
+        [
+          {
+            "node": "analyze performance and create new prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait3": {
+      "main": [
+        [
+          {
+            "node": "Split Out3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait4": {
+      "main": [
+        [
+          {
+            "node": "XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read updated prompt bank": {
+      "ai_tool": [
+        [
+          {
+            "node": "research artice and write x thread",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3 Hours": {
+      "main": [
+        [
+          {
+            "node": "Fetch X metrics/X analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d789ddaf-dd37-4da2-bbec-7f3bb1c699b2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "99d3d0b58121e0db505455c8baa12ef29cc6a6ca4e101cf705c0811ae247979f"
+  },
+  "id": "nUYuCDdWIT7X9vdU",
+  "tags": []
+}
